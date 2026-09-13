@@ -31,7 +31,8 @@ def init_db() -> sqlite3.Connection:
         furnishing TEXT, facing_direction TEXT, covered_parking INTEGER, price INTEGER,
         carpet_area INTEGER, super_built_up_area INTEGER, latitude REAL, longitude REAL, 
         posted_by TEXT, posted_by_name TEXT, posted_by_contact TEXT, project_id TEXT, 
-        description TEXT, posted_at TEXT, is_verified BOOLEAN
+        description TEXT, posted_at TEXT, is_verified BOOLEAN,
+        is_live BOOLEAN -- Added missing undocumented field
     )""")
 
     cursor.execute("""
@@ -42,7 +43,8 @@ def init_db() -> sqlite3.Connection:
         facing_direction TEXT, price INTEGER, deposit INTEGER, maintenance INTEGER,
         carpet_area INTEGER, super_builtup_area INTEGER, latitude REAL, longitude REAL, 
         posted_by TEXT, posted_by_name TEXT, posted_by_contact TEXT, description TEXT, 
-        posted_at TEXT
+        posted_at TEXT,
+        is_live BOOLEAN -- Added missing undocumented field
     )""")
 
     cursor.execute("""
