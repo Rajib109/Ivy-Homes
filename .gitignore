@@ -33,3 +33,6 @@ env/
 .DS_Store
 Thumbs.db
 ivy_homes.db
+
+#node_modules
+node_modules/
