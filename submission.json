@@ -3,8 +3,8 @@
   "candidate": {
     "name": "Shujaat Hussain",
     "email": "grb7917@gmail.com",
-    "repo_url": "",
-    "demo_url": ""
+    "repo_url": "https://github.com/Rajib109/Ivy-Homes.git",
+    "demo_url": "https://ivy-homes-beta.vercel.app/"
   },
   "answers": {
     "total_listing_records": 50,
