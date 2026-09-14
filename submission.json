@@ -1,0 +1,104 @@
+{
+  "api_key": "IVY26-0F408E87FC93",
+  "candidate": {
+    "name": "Shujaat Hussain",
+    "email": "grb7917@gmail.com",
+    "repo_url": "",
+    "demo_url": ""
+  },
+  "answers": {
+    "total_listing_records": 50,
+    "unique_properties": 50,
+    "active_listings": 42,
+    "corrupt_listing_ids": ["MAG-2002456"],
+    "total_monthly_rent": 280500,
+    "avg_price_per_sqft_2bhk": 14291.8359386165,
+    "costliest_project": { "project_id": "P20027", "price_max_inr": 968000000 },
+    "listings_last_7_days": 2,
+    "fake_listing_ids": ["100-2000006", "MAG-2001533"],
+    "projects_with_wrong_listing_count": 46
+  },
+  "findings": [
+    {
+      "endpoint": "/auth/login",
+      "category": "auth",
+      "documented": "Response returns a 'token' key. API key can be sent as a query parameter. No refresh flow exists.",
+      "actual": "Response key is actually 'access_token'. The API key must be sent in the X-API-Key request header, not as a query parameter. Login requires email + password to obtain an access token, which must be included on every subsequent request. The response also includes a 'refresh_token' and 'refresh_url', proving a refresh flow does exist.",
+      "how_found": "Inspected the raw /auth/login response body and compared header-based vs query-param key submission.",
+      "impact": "Clients built strictly from the docs will use the wrong field name, send the API key incorrectly, and miss the token refresh mechanism entirely.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/auth/logout",
+      "category": "auth",
+      "documented": "POST /auth/logout invalidates the current token server side.",
+      "actual": "Logout returns 200 OK, but the same token still works for /v1/listings requests afterward. Confirms tokens are stateless (no server-side blocklist); logout is effectively a client-side-only convention, matching the API's own guidance that tokens should be discarded client side.",
+      "how_found": "Called /auth/logout, then reused the same token on a subsequent authenticated request.",
+      "impact": "Apps relying on server-side logout for security are exposed; clients must destroy the token themselves to actually end a session.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/listings, /v1/rentals",
+      "category": "undocumented_endpoint",
+      "documented": "Docs warned they might be out of date but did not mention an is_live field.",
+      "actual": "Both endpoints return an undocumented 'is_live' field on every record.",
+      "how_found": "A dynamic ingestion script built INSERT statements from response keys; SQLite errored trying to map 'is_live' to a non-existent column.",
+      "impact": "CREATE TABLE definitions for both listings and rentals must add an is_live column or ingestion breaks.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/health",
+      "category": "timestamps",
+      "documented": "Timestamps are ISO 8601, UTC, with a Z suffix, everywhere in the API.",
+      "actual": "/health returns local India time (+05:30 / Asia/Kolkata), and the field is named 'server_time' rather than 'time' or 'timestamp'.",
+      "how_found": "Inspected the raw /health response.",
+      "impact": "Code assuming UTC will be off by 5.5 hours; code looking for a 'time'/'timestamp' key will fail to find it.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/listings",
+      "category": "pagination",
+      "documented": "The limit parameter has a maximum of 200.",
+      "actual": "Requesting limit=250 returns exactly 50 records; the real hard cap is 50, not 200.",
+      "how_found": "Sent a request with limit=250 and counted the records returned.",
+      "impact": "Clients expecting up to 200 results per page will under-fetch and need more page requests than expected.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/listings",
+      "category": "pagination",
+      "documented": "Response envelope includes 'page' and 'page_size'.",
+      "actual": "Envelope actually uses 'limit', 'offset', 'count', 'total', and 'has_more' — offset-based tracking, not page-based.",
+      "how_found": "Inspected the pagination metadata in list responses.",
+      "impact": "Pagination code written against page/page_size will break; must be rewritten for offset-based logic.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/projects",
+      "category": "units",
+      "documented": "price_min and price_max are in rupees (stated in both the Conventions table and the Projects section). The documented example shows price_max: 21400000 for a single project.",
+      "actual": "No project in the dataset has a price_max above 1,000,000, which is impossible if the field were true rupees for real builder projects. The highest value observed (project P20027) is 96.8 — consistent with the field actually being denominated in crores, not rupees, e.g. 96.8 crore = INR 968,000,000.",
+      "how_found": "Filtered the ingested projects table for price_max > 1,000,000 expecting rupee-scale results; the query returned zero rows. Compared the observed value range against the documentation's own worked example (21400000), which is ~2 orders of magnitude larger.",
+      "impact": "Any app displaying price_max/price_min as-is (assuming rupees per the docs) will understate project prices by roughly 10,000,000x. Values must be multiplied by 1e7 before display or storage as INR.",
+      "evidence": ["P20027"]
+    },
+    {
+      "endpoint": "/v1/listings/{id}/similar",
+      "category": "missing_endpoint",
+      "documented": "Documented as an active endpoint returning up to 10 comparable listings.",
+      "actual": "Returns 404 Not Found for a valid listing id.",
+      "how_found": "Called the endpoint directly with a valid listing id.",
+      "impact": "Any 'similar listings' feature cannot be built against this API despite the docs.",
+      "evidence": []
+    },
+    {
+      "endpoint": "/v1/analytics/summary",
+      "category": "missing_endpoint",
+      "documented": "Documented as an active endpoint, alongside /v1/rentals and /v1/projects.",
+      "actual": "/v1/rentals and /v1/projects return 200 OK as documented, but /v1/analytics/summary returns 404 Not Found.",
+      "how_found": "Called each documented endpoint directly.",
+      "impact": "Any analytics dashboard feature depending on this endpoint cannot be built; only a partial subset of the documented entity endpoints actually exist.",
+      "evidence": []
+    }
+  ]
+}
