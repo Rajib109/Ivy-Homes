@@ -36,3 +36,4 @@ ivy_homes.db
 
 #node_modules
 node_modules/
+.vercel
